@@ -60,7 +60,7 @@ class NNLS:
         self.m = self.a.shape[1]
         self.n = self.b.shape[1]
 
-    def solve_nnls(self) -> None:
+    def run(self) -> None:
         """
         Compute the non-negative least-squares solution and store it
                 in the `c` attribute.
@@ -75,7 +75,7 @@ class NNLS:
         prob.solve(verbose=self.verbose)
         self.c = c.value
 
-    def solve_nnls_scipy(self) -> None:
+    def run_scipy(self) -> None:
         """
         Compute the non-negative least-squares solution using SciPy's nnls
                 function and store it in the `c` attribute.
@@ -104,7 +104,7 @@ class NNLS:
         """
         return nnls(a, b)[0]
 
-    def solve_nnls_scipy_parallel(self) -> None:
+    def run_scipy_parallel(self) -> None:
         """
         Compute the non-negative least-squares solution using SciPy's nnls
                 function in parallel and store it in the `c` attribute.
@@ -118,3 +118,48 @@ class NNLS:
             delayed(self._nnls_o)(self.a, self.b[:, i]) for i in range(self.n)
         )
         self.c = np.array(self.c).T
+
+    def run_admm(
+        self,
+        rho: float = 0,
+        k: int = 100,
+    ) -> None:
+        """
+        Compute the non-negative least-squares solution using the Alternating
+        Direction Method of Multipliers (ADMM) algorithm.
+
+        Parameters:
+        rho (float, optional): Penalty parameter for the ADMM algorithm, by default 0.
+        k (int, optional): Number of ADMM iterations to perform, by default 100.
+
+        Returns:
+        None
+        """
+        # Predefine variables
+        self.c = np.zeros((self.m, self.n))
+        W = np.zeros((self.m, self.n))
+        Lambd = np.zeros((self.m, self.n))
+        b_fro = np.linalg.norm(self.b, "fro")
+
+        # Set the value of rho if it's 0
+        if rho == 0:
+            rho = np.linalg.norm(self.a, "fro")
+
+        # Pre-calculate the pseudo-inverse of
+        # (self.a.T @ self.a + 1 * scis.eye(self.m, dtype=np.float32))
+        pinv = np.linalg.inv(
+            np.array(
+                (self.a.T @ self.a + 1 * scis.eye(self.m, dtype=np.float32)).todense()
+            )
+        ).astype(np.float32)
+        AtY = np.array(self.a.T @ self.b)
+
+        # Run the ADMM algorithm for k iterations
+        for i in range(k):
+            self.c = pinv @ (AtY + rho * (Lambd - W))
+            Lambd = np.clip(self.c + W, np.finfo(np.float32).eps, None)
+            W += self.c - Lambd
+
+            # Print the current relative error if verbose is True
+            if self.verbose:
+                print(i, np.linalg.norm(self.a @ self.c - self.b, "fro") / b_fro * 100)
