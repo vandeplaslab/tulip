@@ -164,3 +164,6 @@ cython_debug/
 
 # Exclude ENV
 tullip/*
+
+# Other Excludes
+src/tullip/old_methods.py
