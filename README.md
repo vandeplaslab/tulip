@@ -1,7 +1,7 @@
 # TULLIP
 specTrometric Unmixing of single-ceLL by Inverse Problem
 
-<img src="https://github.com/RogerMoens/tullip/example/overlap.png" alt="Nomenclature" width="400"/> 
+<img src="https://github.com/RogerMoens/tullip/blob/master/example/overlap.png" alt="Nomenclature" width="400"/> 
 
 **An example Jupyter Notebook is available from example.ipynb**
 
