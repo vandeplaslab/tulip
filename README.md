@@ -1,13 +1,13 @@
 # TULLIP
 specTrometric Unmixing of single-ceLL by Inverse Problem
 
-<img src="https://github.com/RogerMoens/tullip/blob/master/example/overlap.png" alt="Nomenclature" width="400"/> 
+<img src="https://github.com/RogerMoens/tullip/blob/master/example/overlap.png" alt="Nomenclature" width="400"/>
 
 **An example Jupyter Notebook is available from example.ipynb**
 
 **1. Generate spatial view**
 ```python
-from cynth import spatial
+from tullip import spatial
 a = spatial()
 a.from_tiff("path/to/file.tiff", 1000, 1000, 100, 100) # x, y, x_size, y_size
 ```
@@ -27,28 +27,28 @@ plt.show()
 
 **2. Generate spectral view**
 ```python
-from cynth import spectral
+from tullip import spectral
 b = spectral()
 # Generate spectra from condition on first input (sparse_overlap_matrix) for cell and for nar
 # Alternatively, one can also provide spectra for nar and cell through the initialization
-b.from_real(sparse_overlap_matrix, spectra, 'a >= 0.99999', 10, annotation = 'cell') 
+b.from_real(sparse_overlap_matrix, spectra, 'a >= 0.99999', 10, annotation = 'cell')
 b.from_real(sparse_overlap_matrix, spectra, 'a.sum(axis=1) < 0.00001', 1, annotation = 'nar')
 ```
 ```python
 # Print all class variables: cell spectra, nar spectra, cell class distribution, nar class distribution, number of different cell spectra, number of m/z bins
-print(b.cell, b.nar, b.cell_distribution, b.nar_distribution, b.cell_num, b.spec_num) 
+print(b.cell, b.nar, b.cell_distribution, b.nar_distribution, b.cell_num, b.spec_num)
 ```
 
-**3. Generate cynthetic data set**
+**3. Generate synthetic data set**
 ```python
-import cynth as cynth
-c = cynth.cynth(a, b) # Provide cynth.spatial and cynth.spectral instances earlier created
+import tullip as tullip
+c = tullip.tullip(a, b) # Provide tullip.spatial and tullip.spectral instances earlier created
 c.link() # Link spectra to cells: (1) sample classes of spectra and link to spatial cells/nar; (2) generate a sparse matrix that links the spectra to cells/nar
 c.downsample(16, type='linear') # Downsample linearly with a scale of 16 (as provided by Heath)
 ```
 ```python
 # Y = V * W
-# Y : c.mixed (2-dimensional, flattened) or c.mixed_block (3-dimensional) 
+# Y : c.mixed (2-dimensional, flattened) or c.mixed_block (3-dimensional)
 # V : c.overlap
 # W : c.spectra
 
@@ -80,11 +80,11 @@ plt.colorbar()
 plt.show()
 ```
 
-**3. Unmix cynthetic data set**
+**3. Unmix tullipetic data set**
 ```python
-from cynth import unmix
-u = unmix()
-mat = u.solve_ls(c.overlap, c.mixed)
+from tullip import ls
+u = ls()
+mat = u.run(c.overlap, c.mixed)
 # mat = u.solve_nnls(c.overlap, c.mixed)
 # mat = u.solve_nnm(c.overlap, c.mixed, lambda_factor=0.1)
 # mat = u.solve_nn_nnm(c.overlap, c.mixed, lambda_factor=0.1)
