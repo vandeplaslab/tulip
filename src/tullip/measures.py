@@ -48,7 +48,7 @@ class MEASURES:
         # Store input objects as class attributes
         self._spatial = spatial
         self._spectral = spectral
-        tullip._mix = mix
+        self._mix = mix
         self.c = c
         pass
 
@@ -93,19 +93,19 @@ class MEASURES:
         a = (
             100
             - np.linalg.norm(
-                self._tullip.cell_spectra
+                self._mix.cell_spectra
                 - self.c[self._spatial.refactored_cell_ids, :],
                 2,
                 axis=1,
             )
-            / (np.linalg.norm(self._tullip.cell_spectra, 2, axis=1) + 1e-8)
+            / (np.linalg.norm(self._mix.cell_spectra, 2, axis=1) + 1e-8)
             * 100
         )
 
         # Handle NAR (Non-Anatomical Region) spectra differently based on refactored IDs
         if max(self._spatial.refactored_nar_ids) >= self.c.shape[0]:
             nar = np.mean(
-                self._tullip.mixed - self._tullip.overlap_extended @ self.c,
+                self._mix.mixed - self._mix.overlap_extended @ self.c,
                 axis=0,
             )
         else:
@@ -114,26 +114,25 @@ class MEASURES:
         # Calculate L2 norm-based fit quality for NAR
         b = (
             100
-            - np.linalg.norm(self._tullip.nar_spectra - nar, 2, axis=1)
-            / (np.linalg.norm(self._tullip.nar_spectra, 2, axis=1) + 1e-8)
+            - np.linalg.norm(self._mix.nar_spectra - nar, 2, axis=1)
+            / (np.linalg.norm(self._mix.nar_spectra, 2, axis=1) + 1e-8)
             * 100
         )
 
         # Calculate maximum relative errors for cells
         c = np.linalg.norm(
             (
-                self._tullip.cell_spectra
+                self._mix.cell_spectra
                 - self.c[self._spatial.refactored_cell_ids, :]
             )
-            / (self._tullip.cell_spectra + 1e-8),
+            / (self._mix.cell_spectra + 1e-8),
             np.infty,
             axis=1,
         )
 
         # Calculate maximum relative errors for NAR
         d = np.linalg.norm(
-            (self._tullip.nar_spectra - nar)
-            / (self._tullip.nar_spectra + 1e-8),
+            (self._mix.nar_spectra - nar) / (self._mix.nar_spectra + 1e-8),
             np.infty,
             axis=1,
         )
@@ -157,18 +156,18 @@ class MEASURES:
         a = (
             100
             - np.linalg.norm(
-                self._tullip.cell_spectra
+                self._mix.cell_spectra
                 - self.c[self._spatial.refactored_cell_ids, :],
                 "fro",
             )
-            / np.linalg.norm(self._tullip.cell_spectra, "fro")
+            / np.linalg.norm(self._mix.cell_spectra, "fro")
             * 100
         )
 
         # Handle NAR spectra fitting
         if max(self._spatial.refactored_nar_ids) >= self.c.shape[0]:
             nar = np.mean(
-                self._tullip.mixed - self._tullip.overlap_extended @ self.c,
+                self._mix.mixed - self._mix.overlap_extended @ self.c,
                 axis=0,
             )
         else:
@@ -177,8 +176,8 @@ class MEASURES:
         # Calculate global NAR fit using Frobenius norm
         b = (
             100
-            - np.linalg.norm(self._tullip.nar_spectra - nar, "fro")
-            / np.linalg.norm(self._tullip.nar_spectra, "fro")
+            - np.linalg.norm(self._mix.nar_spectra - nar, "fro")
+            / np.linalg.norm(self._mix.nar_spectra, "fro")
             * 100
         )
 
@@ -186,20 +185,20 @@ class MEASURES:
         c = np.median(
             100
             - np.linalg.norm(
-                self._tullip.cell_spectra
+                self._mix.cell_spectra
                 - self.c[self._spatial.refactored_cell_ids, :],
                 2,
                 axis=1,
             )
-            / (np.linalg.norm(self._tullip.cell_spectra, 2, axis=1) + 1e-8)
+            / (np.linalg.norm(self._mix.cell_spectra, 2, axis=1) + 1e-8)
             * 100
         )
 
         # Calculate median of per-NAR fit qualities
         d = np.median(
             100
-            - np.linalg.norm(self._tullip.nar_spectra - nar, 2, axis=1)
-            / (np.linalg.norm(self._tullip.nar_spectra, 2, axis=1) + 1e-8)
+            - np.linalg.norm(self._mix.nar_spectra - nar, 2, axis=1)
+            / (np.linalg.norm(self._mix.nar_spectra, 2, axis=1) + 1e-8)
             * 100
         )
 
@@ -234,7 +233,7 @@ class MEASURES:
         for i in range(len(entry_list)):
             # First Column: Plot true and recovered spectra
             axs[i, 0].stem(
-                -self._tullip.spectra[entry_list[i], :].T,
+                -self._mix.spectra[entry_list[i], :].T,
                 linefmt="white",
                 markerfmt=" ",
                 label="True Cell #" + str(entry_list[i]),
@@ -251,10 +250,10 @@ class MEASURES:
             # Second Column: Plot relative error
             stm = (
                 (
-                    self._tullip.spectra[entry_list[i], :].T
+                    self._mix.spectra[entry_list[i], :].T
                     - self.c[entry_list[i], :].T
                 )
-                / self._tullip.spectra[entry_list[i], :].T
+                / self._mix.spectra[entry_list[i], :].T
                 * 100
             )
             axs[i, 1].stem(
@@ -266,8 +265,7 @@ class MEASURES:
 
             # Third Column: Plot error distribution
             axs[i, 2].hist(
-                self._tullip.spectra[entry_list[i], :]
-                - self.c[entry_list[i], :],
+                self._mix.spectra[entry_list[i], :] - self.c[entry_list[i], :],
                 bins=100,
                 histtype="step",
                 color="C" + str(i),
@@ -287,7 +285,7 @@ class MEASURES:
         # Plot NAR results
         if max(self._spatial.refactored_nar_ids) >= self.c.shape[0]:
             nar = np.mean(
-                self._tullip.mixed - self._tullip.overlap_extended @ self.c,
+                self._mix.mixed - self._mix.overlap_extended @ self.c,
                 axis=0,
             )
         else:
@@ -364,7 +362,7 @@ class MEASURES:
         # Plot residuals
         plt.hist(
             (
-                self._tullip.cell_spectra
+                self._mix.cell_spectra
                 - self.c[self._spatial.refactored_cell_ids, :]
             ).flatten(),
             bins=1000,
@@ -375,7 +373,7 @@ class MEASURES:
 
         # Plot ground truth
         plt.hist(
-            (self._tullip.cell_spectra).flatten(),
+            (self._mix.cell_spectra).flatten(),
             bins=1000,
             histtype="step",
             linewidth=3,
@@ -413,24 +411,25 @@ class MEASURES:
             Array of distances between matched cluster centers
         """
         # Apply k-means clustering to unmixed spectra
-        a, b = self._apply_kmeans(
+        a, b = self.apply_kmeans(
             self._spectral.cell_num,
             0,
             self.c[self._spatial.refactored_cell_ids, :],
         )
 
         # Match means with original clusters using correlation
+
         coeff = (np.corrcoef(self._spectral.cell, a))[
-            : self._spectral.cell_num, self
+            : self._spectral.cell_num, self._spectral.cell_num :
         ]
         order = np.argmax(coeff, axis=0)
 
         # compare cluster matching (correct vs. wrong)
         match = 0
-        for i in range(self._tullip.cell_link.size):
+        for i in range(self._mix.cell_link.size):
             match = (
                 match + 1
-                if (self._tullip.cell_link[i] - 1 == order[b[i]])
+                if (self._mix.cell_link[i] - 1 == order[b[i]])
                 else match + 0
             )
 
@@ -441,7 +440,7 @@ class MEASURES:
             / np.linalg.norm(self._spectral.cell[order, :], 2, axis=1)
         )
 
-        return ((100 * match / self._tullip.cell_link.size), dist)
+        return ((100 * match / self._mix.cell_link.size), dist)
 
     def apply_kmeans(
         self,
@@ -523,22 +522,22 @@ class MEASURES:
         Higher percentage values indicate better fit between cell spectra and
         unmixed components.
         """
-        q1 = np.where(self._tullip.overlap.sum(axis=0) < 1)[1]
+        q1 = np.where(self._mix.overlap.sum(axis=0) < 1)[1]
         q2 = np.where(
             np.logical_and(
-                self._tullip.overlap.sum(axis=0) >= 1,
-                self._tullip.overlap.sum(axis=0) < 2,
+                self._mix.overlap.sum(axis=0) >= 1,
+                self._mix.overlap.sum(axis=0) < 2,
             )
         )[1]
         q3 = np.setdiff1d(
-            np.where(self._tullip.overlap.sum(axis=0) >= 2)[1],
+            np.where(self._mix.overlap.sum(axis=0) >= 2)[1],
             self._spatial.refactored_nar_ids,
         )
 
         print(q1.shape, q2.shape, q3.shape)
         print(
             (
-                self._tullip.cell_spectra[q1, :]
+                self._mix.cell_spectra[q1, :]
                 - self.c[self._spatial.refactored_cell_ids[q1], :]
             ).shape
         )
@@ -546,33 +545,33 @@ class MEASURES:
         a = (
             100
             - np.linalg.norm(
-                self._tullip.cell_spectra[q1, :]
+                self._mix.cell_spectra[q1, :]
                 - self.c[self._spatial.refactored_cell_ids[q1], :],
                 "fro",
             )
-            / np.linalg.norm(self._tullip.cell_spectra[q1, :], "fro")
+            / np.linalg.norm(self._mix.cell_spectra[q1, :], "fro")
             * 100
         )
 
         b = (
             100
             - np.linalg.norm(
-                self._tullip.cell_spectra[q2, :]
+                self._mix.cell_spectra[q2, :]
                 - self.c[self._spatial.refactored_cell_ids[q2], :],
                 "fro",
             )
-            / np.linalg.norm(self._tullip.cell_spectra[q2, :], "fro")
+            / np.linalg.norm(self._mix.cell_spectra[q2, :], "fro")
             * 100
         )
 
         c = (
             100
             - np.linalg.norm(
-                self._tullip.cell_spectra[q3, :]
+                self._mix.cell_spectra[q3, :]
                 - self.c[self._spatial.refactored_cell_ids[q3], :],
                 "fro",
             )
-            / np.linalg.norm(self._tullip.cell_spectra[q3, :], "fro")
+            / np.linalg.norm(self._mix.cell_spectra[q3, :], "fro")
             * 100
         )
         return (a, b, c)

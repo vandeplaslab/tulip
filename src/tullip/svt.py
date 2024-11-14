@@ -29,8 +29,8 @@ class SVT:
 
     def __init__(
         self,
-        a: scis.dok_matrix,
-        b: np.ndarray,
+        a: scis.dok_array,
+        b: scis.csc_array,
         verbose: bool = False,
     ):
         """
@@ -74,12 +74,12 @@ class SVT:
             tau = self.b.shape[0]
 
         # Initialize variables
-        b_fro = np.linalg.norm(self.b, "fro")
+        b_fro = scis.linalg.norm(self.b, "fro")
         # k0 = int(tau / delta / b_fro)
-        Y = np.zeros_like(self.b)
+        Y = np.zeros(self.b.shape)
         r = 0
         k = 0
-        pinv_a = np.linalg.pinv(self.a)
+        pinv_a = np.linalg.pinv(self.a.toarray())
 
         # Main SVT loop
         while k < k_max:

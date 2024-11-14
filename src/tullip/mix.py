@@ -7,7 +7,7 @@ import tullip.spatial
 import tullip.spectral
 
 
-class mix:
+class MIX:
     """
     Generate synthetic cell spatial views by mixing spatial and spectral data.
     This class combines cellular spatial information with spectral signatures

@@ -1,4 +1,4 @@
-import cvxpy as cp
+# import cvxpy as cp
 import numpy as np
 import scipy.sparse as scis
 from joblib import Parallel, delayed
@@ -40,7 +40,11 @@ class NNLS:
     """
 
     def __init__(
-        self, a: scis.dok_matrix, b: np.ndarray, verbose: bool = False, n_jobs: int = 1
+        self,
+        a: scis.dok_matrix,
+        b: np.ndarray,
+        verbose: bool = False,
+        n_jobs: int = 1,
     ):
         """
         Initialize the NNLS class with the given parameters.
@@ -60,22 +64,22 @@ class NNLS:
         self.m = self.a.shape[1]
         self.n = self.b.shape[1]
 
+    # def run_cvxpy(self) -> None:
+    #     """
+    #     Compute the non-negative least-squares solution and store it
+    #             in the `c` attribute.
+
+    #     Returns:
+    #     None
+    #     """
+    #     c = cp.Variable((self.m, self.n))
+    #     objective = cp.Minimize(cp.norm((self.a @ c - self.b), "fro"))
+    #     constraints = [0 <= cp.vec(c)]
+    #     prob = cp.Problem(objective, constraints)
+    #     prob.solve(verbose=self.verbose)
+    #     self.c = c.value
+
     def run(self) -> None:
-        """
-        Compute the non-negative least-squares solution and store it
-                in the `c` attribute.
-
-        Returns:
-        None
-        """
-        c = cp.Variable((self.m, self.n))
-        objective = cp.Minimize(cp.norm((self.a @ c - self.b), "fro"))
-        constraints = [0 <= cp.vec(c)]
-        prob = cp.Problem(objective, constraints)
-        prob.solve(verbose=self.verbose)
-        self.c = c.value
-
-    def run_scipy(self) -> None:
         """
         Compute the non-negative least-squares solution using SciPy's nnls
                 function and store it in the `c` attribute.
@@ -143,13 +147,15 @@ class NNLS:
 
         # Set the value of rho if it's 0
         if rho == 0:
-            rho = np.linalg.norm(self.a, "fro")
+            rho = 1 / scis.linalg.norm(self.a, "fro")
 
         # Pre-calculate the pseudo-inverse of
         # (self.a.T @ self.a + 1 * scis.eye(self.m, dtype=np.float32))
         pinv = np.linalg.inv(
             np.array(
-                (self.a.T @ self.a + 1 * scis.eye(self.m, dtype=np.float32)).todense()
+                (
+                    self.a.T @ self.a + 1 * scis.eye(self.m, dtype=np.float32)
+                ).todense()
             )
         ).astype(np.float32)
         AtY = np.array(self.a.T @ self.b)
@@ -162,4 +168,11 @@ class NNLS:
 
             # Print the current relative error if verbose is True
             if self.verbose:
-                print(i, np.linalg.norm(self.a @ self.c - self.b, "fro") / b_fro * 100)
+                print(
+                    i,
+                    np.linalg.norm(self.a @ self.c - self.b, "fro")
+                    / b_fro
+                    * 100,
+                )
+
+        self.c = np.clip(self.c, np.finfo(np.float32).eps, None)

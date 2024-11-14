@@ -1,2 +1,12 @@
 [tool.black]
 line-length = 80
+
+
+[tool.hatch.envs.default]
+dependencies = [
+  "pytest",
+  "numpy",
+  "cvxpy",
+  "scikit-learn",
+  "scipy",
+]
