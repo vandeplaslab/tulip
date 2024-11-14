@@ -7,8 +7,8 @@ specTrometric Unmixing of single-ceLL by Inverse Problem
 
 **1. Generate spatial view**
 ```python
-from tullip import spatial
-a = spatial()
+from tullip import SPATIAL
+a = SPATIAL()
 a.from_tiff("path/to/file.tiff", 1000, 1000, 100, 100) # x, y, x_size, y_size
 ```
 ```python
@@ -27,8 +27,8 @@ plt.show()
 
 **2. Generate spectral view**
 ```python
-from tullip import spectral
-b = spectral()
+from tullip import SPECTRAL
+b = SPECTRAL()
 # Generate spectra from condition on first input (sparse_overlap_matrix) for cell and for nar
 # Alternatively, one can also provide spectra for nar and cell through the initialization
 b.from_real(sparse_overlap_matrix, spectra, 'a >= 0.99999', 10, annotation = 'cell')
@@ -41,8 +41,8 @@ print(b.cell, b.nar, b.cell_distribution, b.nar_distribution, b.cell_num, b.spec
 
 **3. Generate synthetic data set**
 ```python
-import tullip as tullip
-c = tullip.tullip(a, b) # Provide tullip.spatial and tullip.spectral instances earlier created
+from tullip as MIX
+c = MIX(a, b) # Provide tullip.spatial and tullip.spectral instances earlier created
 c.link() # Link spectra to cells: (1) sample classes of spectra and link to spatial cells/nar; (2) generate a sparse matrix that links the spectra to cells/nar
 c.downsample(16, type='linear') # Downsample linearly with a scale of 16 (as provided by Heath)
 ```
@@ -82,10 +82,19 @@ plt.show()
 
 **3. Unmix tullipetic data set**
 ```python
-from tullip import ls
-u = ls()
-mat = u.run(c.overlap, c.mixed)
-# mat = u.solve_nnls(c.overlap, c.mixed)
-# mat = u.solve_nnm(c.overlap, c.mixed, lambda_factor=0.1)
-# mat = u.solve_nn_nnm(c.overlap, c.mixed, lambda_factor=0.1)
+from tullip import LS
+u = LS(c.overlap, c.mixed)
+mat = u.run()
+
+from tullip import NNLS
+u = NNLS(c.overlap, c.mixed)
+mat = u.run()
+
+from tullip import SVT
+u = SVT(c.overlap, c.mixed)
+mat = u.run()
+
+from tullip import TULLIP
+u = TULLIP(c.overlap, c.mixed)
+mat = u.run()
 ```
