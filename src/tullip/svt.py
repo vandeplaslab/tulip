@@ -45,6 +45,8 @@ class SVT:
         self.b = b
         self.verbose = verbose
         self.c = None
+        self.m = self.a.shape[1]
+        self.n = self.b.shape[1]
 
     def run(
         self,
@@ -97,7 +99,9 @@ class SVT:
             crit = np.linalg.norm((self.b - self.a @ self.c), "fro") / b_fro
             if crit < 1e-4:
                 if self.verbose:
-                    print(f"Converged at iteration {k} - Final error = {crit:.6f}")
+                    print(
+                        f"Converged at iteration {k} - Final error = {crit:.6f}"
+                    )
                 break
             elif self.verbose:
                 print(f"Iteration {k} - Error = {crit:.6f} - Rank = {r}")
@@ -109,4 +113,6 @@ class SVT:
             k += 1
 
         if self.verbose and k == k_max:
-            print(f"Maximum iterations ({k_max}) reached - Final error = {crit:.6f}")
+            print(
+                f"Maximum iterations ({k_max}) reached - Final error = {crit:.6f}"
+            )
