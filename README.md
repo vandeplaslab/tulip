@@ -1,4 +1,4 @@
-# TULIP
+# TULIP :tulip:
 The in-silico Unmixing of singLe-cell spectra by an Inverse Problem for imaging mass spectrometry
 
 <img src="https://github.com/vandeplaslab/tulip/blob/master/example/overlap.png" alt="Nomenclature" width="400"/>
