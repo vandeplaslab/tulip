@@ -1,13 +1,13 @@
-# TULLIP
+# TULIP
 specTrometric Unmixing of single-ceLL by Inverse Problem
 
-<img src="https://github.com/RogerMoens/tullip/blob/master/example/overlap.png" alt="Nomenclature" width="400"/>
+<img src="https://github.com/RogerMoens/tulip/blob/master/example/overlap.png" alt="Nomenclature" width="400"/>
 
 **An example Jupyter Notebook is available from example.ipynb**
 
 **1. Generate spatial view**
 ```python
-from tullip import SPATIAL
+from tulip import SPATIAL
 a = SPATIAL()
 a.from_tiff("path/to/file.tiff", 1000, 1000, 100, 100) # x, y, x_size, y_size
 ```
@@ -27,7 +27,7 @@ plt.show()
 
 **2. Generate spectral view**
 ```python
-from tullip import SPECTRAL
+from tulip import SPECTRAL
 b = SPECTRAL()
 # Generate spectra from condition on first input (sparse_overlap_matrix) for cell and for nar
 # Alternatively, one can also provide spectra for nar and cell through the initialization
@@ -41,8 +41,8 @@ print(b.cell, b.nar, b.cell_distribution, b.nar_distribution, b.cell_num, b.spec
 
 **3. Generate synthetic data set**
 ```python
-from tullip as MIX
-c = MIX(a, b) # Provide tullip.spatial and tullip.spectral instances earlier created
+from tulip as MIX
+c = MIX(a, b) # Provide tulip.spatial and tulip.spectral instances earlier created
 c.link() # Link spectra to cells: (1) sample classes of spectra and link to spatial cells/nar; (2) generate a sparse matrix that links the spectra to cells/nar
 c.downsample(16, type='linear') # Downsample linearly with a scale of 16 (as provided by Heath)
 ```
@@ -80,21 +80,21 @@ plt.colorbar()
 plt.show()
 ```
 
-**3. Unmix tullipetic data set**
+**3. Unmix tulipetic data set**
 ```python
-from tullip import LS
+from tulip import LS
 u = LS(c.overlap, c.mixed)
 mat = u.run()
 
-from tullip import NNLS
+from tulip import NNLS
 u = NNLS(c.overlap, c.mixed)
 mat = u.run()
 
-from tullip import SVT
+from tulip import SVT
 u = SVT(c.overlap, c.mixed)
 mat = u.run()
 
-from tullip import TULLIP
-u = TULLIP(c.overlap, c.mixed)
+from tulip import tulip
+u = tulip(c.overlap, c.mixed)
 mat = u.run()
 ```

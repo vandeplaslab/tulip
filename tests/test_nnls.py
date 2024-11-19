@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import scipy.sparse as scis
 
-from tullip.nnls import NNLS
+from tulip.nnls import NNLS
 
 
 @pytest.fixture

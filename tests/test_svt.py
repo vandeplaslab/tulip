@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import scipy.sparse as scis
 
-from tullip.svt import SVT
+from tulip.svt import SVT
 
 
 def test_svt_initialization():

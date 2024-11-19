@@ -3,8 +3,8 @@ from typing import Union
 import numpy as np
 import scipy.sparse as ss
 
-import tullip.spatial
-import tullip.spectral
+import tulip.spatial
+import tulip.spectral
 
 
 class MIX:
@@ -15,9 +15,9 @@ class MIX:
 
     Parameters
     ----------
-    spatial : tullip.spatial
+    spatial : tulip.spatial
         Object containing spatial information about cells and non-annotated regions (nar)
-    spectral : tullip.spectral
+    spectral : tulip.spectral
         Object containing spectral signatures for cells and non-annotated regions
 
     Attributes
@@ -40,8 +40,8 @@ class MIX:
 
     def __init__(
         self,
-        spatial: tullip.spatial,
-        spectral: tullip.spectral,
+        spatial: tulip.spatial,
+        spectral: tulip.spectral,
     ):
         self._spatial = spatial
         self._spectral = spectral

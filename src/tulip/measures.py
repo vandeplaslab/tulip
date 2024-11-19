@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.cluster import KMeans
 
-import tullip.mix
-import tullip.spatial
-import tullip.spectral
+import tulip.mix
+import tulip.spatial
+import tulip.spectral
 
 
 class MEASURES:
@@ -17,32 +17,32 @@ class MEASURES:
 
     Parameters
     ----------
-    spatial: tullip.spatial
+    spatial: tulip.spatial
         Object containing spatial information and relationships
-    spectral: tullip.spectral
+    spectral: tulip.spectral
         Object containing spectral data and parameters
-    mix: tullip.mix
+    mix: tulip.mix
         Object containing synthetic data and ground truth
-    unmix: tullip.unmix
+    unmix: tulip.unmix
         Object containing unmixing results to be evaluated
 
     Attributes
     ----------
-    _spatial: tullip.spatial
+    _spatial: tulip.spatial
         Stored spatial information
-    _spectral: tullip.spectral
+    _spectral: tulip.spectral
         Stored spectral information
-    _mix: tullip.mix
+    _mix: tulip.mix
         Stored ground truth data
-    _unmix: tullip.unmix
+    _unmix: tulip.unmix
         Stored unmixing results
     """
 
     def __init__(
         self,
-        spatial: tullip.spatial,
-        spectral: tullip.spectral,
-        mix: tullip.mix,
+        spatial: tulip.spatial,
+        spectral: tulip.spectral,
+        mix: tulip.mix,
         c: np.array,
     ):
         # Store input objects as class attributes

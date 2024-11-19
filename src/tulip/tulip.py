@@ -4,17 +4,17 @@ import numpy as np
 import scipy.sparse as scis
 
 
-class TULLIP:
+class TULIP:
     """
-    TULLIP (specTrometric Unmixing of single-ceLL by Inverse Problem) algorithm
+    TULIP (specTrometric Unmixing of single-ceLL by Inverse Problem) algorithm
     for matrix factorization with sparsity and non-negativity constraints.
 
     Parameters
     ----------
     a : scipy.sparse.dok_matrix or numpy.ndarray
-        Measurement matrix A in the TULLIP problem.
+        Measurement matrix A in the TULIP problem.
     b : numpy.ndarray
-        Observation matrix B in the TULLIP problem.
+        Observation matrix B in the TULIP problem.
     omega : numpy.ndarray
         Binary mask matrix indicating observed entries.
     verbose : bool, optional
@@ -23,9 +23,9 @@ class TULLIP:
     Attributes
     ----------
     a : scipy.sparse.dok_matrix or numpy.ndarray
-        Measurement matrix A in the TULLIP problem.
+        Measurement matrix A in the TULIP problem.
     b : numpy.ndarray
-        Observation matrix B in the TULLIP problem.
+        Observation matrix B in the TULIP problem.
     omega : numpy.ndarray
         Binary mask matrix indicating observed entries.
     verbose : bool
@@ -44,7 +44,7 @@ class TULLIP:
         verbose: bool = False,
     ):
         """
-        Initialize the TULLIP class with the given parameters.
+        Initialize the TULIP class with the given parameters.
 
         Parameters:
         a (Union[scipy.sparse.dok_matrix, numpy.ndarray]): Measurement matrix A.
@@ -123,7 +123,7 @@ class TULLIP:
         normalize: bool = False,
     ) -> None:
         """
-        Run the TULLIP algorithm for matrix factorization.
+        Run the TULIP algorithm for matrix factorization.
 
         Parameters:
         rank (int): Rank of the factorization.
