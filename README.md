@@ -1,7 +1,7 @@
 # TULIP
-specTrometric Unmixing of single-ceLL by Inverse Problem
+The in-silico Unmixing of singLe-cell spectra by an Inverse Problem for imaging mass spectrometry
 
-<img src="https://github.com/RogerMoens/tulip/blob/master/example/overlap.png" alt="Nomenclature" width="400"/>
+<img src="https://github.com/vandeplaslab/tulip/blob/master/example/overlap.png" alt="Nomenclature" width="400"/>
 
 **An example Jupyter Notebook is available from example.ipynb**
 
