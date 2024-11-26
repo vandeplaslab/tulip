@@ -52,6 +52,36 @@ class MEASURES:
         self.c = c
         pass
 
+    def reconstruction_score(self) -> float:
+        """
+        Calculate the reconstruction score of a mixing process.
+
+        The reconstruction score represents the relative error between the
+        reconstructed signal and the original mixed signal, expressed as a
+        percentage of the original mixed signal's Frobenius norm.
+
+        Returns:
+            float: Reconstruction error percentage. A lower value indicates
+                   a more accurate reconstruction.
+
+        Notes:
+            - Uses Frobenius norm to calculate the relative reconstruction error
+            - Multiplied by 100 to express as a percentage
+        """
+        # Calculate the Frobenius norm of the difference between
+        # reconstructed and original mixed signals
+        reconstruction_error = np.linalg.norm(
+            self._mix.overlap @ self.c - self._mix.mixed, "fro"
+        )
+
+        # Calculate the Frobenius norm of the original mixed signal
+        original_signal_norm = np.linalg.norm(self._mix.mixed, "fro")
+
+        # Compute reconstruction score as a percentage
+        a = 100 * reconstruction_error / original_signal_norm
+
+        return a
+
     def nn_entries(
         self,
     ) -> tuple:

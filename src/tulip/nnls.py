@@ -1,5 +1,7 @@
 # import cvxpy as cp
 import numpy as np
+
+# import scipy.linalg
 import scipy.sparse as scis
 from joblib import Parallel, delayed
 from scipy.optimize import nnls
@@ -158,14 +160,20 @@ class NNLS:
                 ).todense()
             )
         ).astype(np.float32)
+        # pinv = scipy.linalg.solve(self.a.T @ self.a + rho * np.eye(self.m), self.a.T)
         AtY = np.array(self.a.T @ self.b)
-
+        prev_error = 1e8
         # Run the ADMM algorithm for k iterations
         for i in range(k):
             self.c = pinv @ (AtY + rho * (Lambd - W))
             Lambd = np.clip(self.c + W, np.finfo(np.float32).eps, None)
             W += self.c - Lambd
 
+            error = np.linalg.norm(self.a @ self.c - self.b, "fro") / b_fro
+            if error < prev_error:
+                prev_error = error
+            else:
+                break
             # Print the current relative error if verbose is True
             if self.verbose:
                 print(
