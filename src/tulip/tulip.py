@@ -1,57 +1,12 @@
-from typing import Union
+# from typing import Union
 
 import numpy as np
-import scipy.sparse as scis
+
+# import scipy.sparse as scis
 
 
 class TULIP:
-    """
-    TULIP (specTrometric Unmixing of single-ceLL by Inverse Problem) algorithm
-    for matrix factorization with sparsity and non-negativity constraints.
-
-    Parameters
-    ----------
-    a : scipy.sparse.dok_matrix or numpy.ndarray
-        Measurement matrix A in the TULIP problem.
-    b : numpy.ndarray
-        Observation matrix B in the TULIP problem.
-    omega : numpy.ndarray
-        Binary mask matrix indicating observed entries.
-    verbose : bool, optional
-        Flag to enable verbose output, by default False.
-
-    Attributes
-    ----------
-    a : scipy.sparse.dok_matrix or numpy.ndarray
-        Measurement matrix A in the TULIP problem.
-    b : numpy.ndarray
-        Observation matrix B in the TULIP problem.
-    omega : numpy.ndarray
-        Binary mask matrix indicating observed entries.
-    verbose : bool
-        Flag to enable verbose output.
-    h : numpy.ndarray
-        Left factor matrix.
-    w :  numpy.ndarray
-        Right factor matrix.
-    """
-
-    def __init__(
-        self,
-        a: Union[scis.dok_matrix, np.ndarray],
-        b: np.ndarray,
-        omega: np.ndarray,
-        verbose: bool = False,
-    ):
-        """
-        Initialize the TULIP class with the given parameters.
-
-        Parameters:
-        a (Union[scipy.sparse.dok_matrix, numpy.ndarray]): Measurement matrix A.
-        b (numpy.ndarray): Observation matrix B.
-        omega (numpy.ndarray): Binary mask matrix indicating observed entries.
-        verbose (bool, optional): Flag to enable verbose output, by default False.
-        """
+    def __init__(self, a, b, omega, verbose=False):
         self.a = a
         self.b = b
         self.omega = omega
@@ -60,6 +15,36 @@ class TULIP:
         self.w = None
         self.m = self.a.shape[1]
         self.n = self.b.shape[1]
+        self.best_h = None
+        self.best_w = None
+        self.best_loss = float("inf")
+
+    def _adam_update(
+        self, param, grad, m, v, t, beta1=0.9, beta2=0.999, epsilon=1e-8
+    ):
+        """
+        Adam optimization algorithm for adaptive learning rates
+
+        Parameters:
+        param (np.ndarray): Current parameter matrix
+        grad (np.ndarray): Gradient of the parameter
+        m (np.ndarray): First moment estimate
+        v (np.ndarray): Second moment estimate
+        t (int): Timestep
+
+        Returns:
+        tuple: Updated parameter, first moment, second moment
+        """
+        m = beta1 * m + (1 - beta1) * grad
+        v = beta2 * v + (1 - beta2) * (grad**2)
+
+        # Bias correction
+        m_hat = m / (1 - beta1**t)
+        v_hat = v / (1 - beta2**t)
+
+        # Parameter update
+        param_updated = param - (m_hat / (np.sqrt(v_hat) + epsilon))
+        return np.maximum(param_updated, np.finfo("float32").eps), m, v
 
     @property
     def c(self) -> np.ndarray:
@@ -116,70 +101,90 @@ class TULIP:
         self,
         rank: int,
         sparsity: float = 0.1,
-        max_iter: int = 100,
-        tol: float = 1e-4,
-        eta_l: float = 0.001,
-        eta_r: float = 0.001,
+        max_iter: int = 200,
+        tol: float = 1e-5,
+        restart_attempts: int = 3,
         normalize: bool = False,
     ) -> None:
-        """
-        Run the TULIP algorithm for matrix factorization.
+        for attempt in range(restart_attempts):
+            # Initialize factors with non-negative random values
+            self.h = np.random.rand(self.m, rank)
+            self.w = np.random.rand(rank, self.n)
 
-        Parameters:
-        rank (int): Rank of the factorization.
-        sparsity (float, optional): Sparsity parameter for soft thresholding, by default 0.1.
-        max_iter (int, optional): Maximum number of iterations, by default 100.
-        tol (float, optional): Convergence tolerance, by default 1e-4.
-        eta_l (float, optional): Step size for L update, by default 0.001.
-        eta_r (float, optional): Step size for R update, by default 0.001.
-        normalize (bool, optional): Whether to normalize rows of R, by default False.
+            # Initialize Adam moments
+            m_h = np.zeros_like(self.h)
+            v_h = np.zeros_like(self.h)
+            m_w = np.zeros_like(self.w)
+            v_w = np.zeros_like(self.w)
 
-        Returns:
-        None
-        """
-        # Initialize factors with non-negative random values
-        self.h = np.random.rand(self.m, rank)
-        self.w = np.random.rand(rank, self.n)
-        l_prev = self.h.copy()
-        r_prev = self.w.copy()
+            l_prev = self.h.copy()
+            r_prev = self.w.copy()
 
-        for iteration in range(max_iter):
-            # Update L
-            grad_l = (
-                self.a.T
-                @ (self.omega * ((self.a @ self.h) @ self.w - self.b))
-                @ self.w.T
-            ) + self.h
-            self.h = self.h - eta_l * grad_l
-            self.h = np.maximum(self.h, np.finfo("float32").eps)
+            for iteration in range(max_iter):
+                # Compute reconstruction error
+                reconstruction = (self.a @ self.h) @ self.w
+                error = self.omega * (reconstruction - self.b)
 
-            # Update R
-            grad_r = (
-                (self.a @ self.h).T
-                @ (self.omega * ((self.a @ self.h) @ self.w - self.b))
-            ) + self.w
-            self.w = self.w - eta_r * grad_r
-            self.w = np.maximum(self.w, np.finfo("float32").eps)
-            self.w = self._soft_threshold(self.w, sparsity)
+                # Update L (left factor)
+                grad_l = (self.a.T @ error @ self.w.T) + self.h
+                self.h, m_h, v_h = self._adam_update(
+                    self.h, grad_l, m_h, v_h, iteration + 1
+                )
+                self.h = np.maximum(self.h, np.finfo("float32").eps)
 
-            if normalize:
-                self.w = self._normalize_rows(self.w)
+                # Update R (right factor)
+                grad_r = ((self.a @ self.h).T @ error) + self.w
+                self.w, m_w, v_w = self._adam_update(
+                    self.w, grad_r, m_w, v_w, iteration + 1
+                )
+                self.w = np.maximum(self.w, np.finfo("float32").eps)
+                self.w = self._soft_threshold(self.w, sparsity)
 
-            # Check convergence
-            l_diff = np.linalg.norm(self.h - l_prev, "fro")
-            r_diff = np.linalg.norm(self.w - r_prev, "fro")
+                if normalize:
+                    self.w = self._normalize_rows(self.w)
 
-            if self.verbose:
-                print(
-                    f"Iteration {iteration + 1}: L diff = {l_diff:.6f}, R diff = {r_diff:.6f}"
+                # Compute current loss
+                current_loss = (
+                    np.linalg.norm(error, "fro")
+                    / np.linalg.norm(self.b, "fro")
+                    * 100
                 )
 
-            if iteration > 0 and l_diff < tol and r_diff < tol:
+                # Update best solution if current loss is lower
+                if current_loss < self.best_loss:
+                    self.best_loss = current_loss
+                    self.best_h = self.h.copy()
+                    self.best_w = self.w.copy()
+
+                # Check convergence
+                l_diff = (
+                    np.linalg.norm(self.h - l_prev, "fro")
+                    / np.linalg.norm(l_prev, "fro")
+                    * 100
+                )
+                r_diff = (
+                    np.linalg.norm(self.w - r_prev, "fro")
+                    / np.linalg.norm(r_prev, "fro")
+                    * 100
+                )
+
                 if self.verbose:
-                    print(f"Converged after {iteration + 1} iterations")
+                    print(
+                        f"Attempt {attempt+1}, Iteration {iteration + 1}: "
+                        f"Loss = {current_loss:.6f}, "
+                        f"L diff = {l_diff:.6f}, R diff = {r_diff:.6f}"
+                    )
+
+                if iteration > 0 and l_diff < tol and r_diff < tol:
+                    break
+
+                l_prev, r_prev = self.h.copy(), self.w.copy()
+
+            # If no improvement, continue to next restart
+            if self.best_h is not None:
+                self.h = self.best_h
+                self.w = self.best_w
                 break
 
-            l_prev, r_prev = self.h.copy(), self.w.copy()
-
-        if self.verbose and iteration == max_iter - 1:
-            print(f"Maximum iterations ({max_iter}) reached")
+        if self.verbose:
+            print(f"Final Loss: {self.best_loss}")

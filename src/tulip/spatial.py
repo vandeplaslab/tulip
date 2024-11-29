@@ -372,7 +372,9 @@ class SPATIAL:
             or if crop area is outside image bounds.
         """
         if not page.is_tiled:
-            raise ValueError("Input page must be tiled.")
+            # For non-tiled images, read the entire image and crop manually
+            crop = page.asarray()[i0 : i0 + h, j0 : j0 + w]
+            return crop
 
         im_width = page.imagewidth
         im_height = page.imagelength

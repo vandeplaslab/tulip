@@ -80,6 +80,7 @@ class SVT:
         r = 0
         k = 0
         pinv_a = np.linalg.pinv(self.a.toarray())
+        Y += delta * (self.b - self.a @ self.c)
 
         # Main SVT loop
         while k < k_max:
