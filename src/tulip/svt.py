@@ -44,9 +44,43 @@ class SVT:
         self.a = a
         self.b = b
         self.verbose = verbose
-        self.c = None
         self.m = self.a.shape[1]
         self.n = self.b.shape[1]
+
+    @property
+    def c(self) -> np.array:
+        """Reconstruct c (low-rank component) from svd components
+
+        Returns
+        -------
+            array : reconstructed low-rank component
+
+        """
+        return np.matmul(np.multiply(self._c[0], self._c[1]), self._c[2])
+
+    @c.setter
+    def c(self, a) -> None:
+        """Sets b from tuple
+
+        Parameters
+        ----------
+        a : tuple[array]
+            Tuple containing arrays of svd to set b
+
+        """
+        # print(type(self._b[1]))
+        self._c[0] = a[0]
+        self._c[1] = a[1]
+        self._c[2] = a[2]
+        return None
+
+    def _initialize_c(self) -> None:
+        """Initialize c"""
+        self._c = [0, 0, 0]
+        self._c[0] = np.zeros((self.m, 1), dtype=np.float32)
+        self._c[1] = np.zeros((1, 1), dtype=np.float32)
+        self._c[2] = np.zeros((1, self.n), dtype=np.float32)
+        return None
 
     def run(
         self,
@@ -74,27 +108,28 @@ class SVT:
             tau = self.b.shape[0]
 
         # Initialize variables
+        self._initialize_c()
         b_fro = scis.linalg.norm(self.b, "fro")
         # k0 = int(tau / delta / b_fro)
         Y = np.zeros(self.b.shape)
         r = 0
         k = 0
         pinv_a = np.linalg.pinv(self.a.toarray())
-        Y += delta * (self.b - self.a @ self.c)
 
         # Main SVT loop
         while k < k_max:
             # s = r + 1
-
             # Calculate SVD and perform soft thresholding
             U, S, Vt = np.linalg.svd(pinv_a @ Y, full_matrices=False)
             r = int(sum(S > tau))
 
             # Compute solution based on thresholded singular values
             if r == 0:
-                self.c = U @ Vt
+                # self.c = U @ Vt
+                self.c = (U, np.array([1]), Vt)
             else:
-                self.c = (U[:, :r] * (S[:r] - tau)) @ Vt[:r, :]
+                self.c = (U[:, :r], (S[:r] - tau), Vt[:r, :])
+                # self.c = (U[:, :r] * (S[:r] - tau)) @ Vt[:r, :]
 
             # Check stopping criterion
             crit = np.linalg.norm((self.b - self.a @ self.c), "fro") / b_fro

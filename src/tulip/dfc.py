@@ -1,10 +1,12 @@
 import contextlib
+import uuid
 
 import joblib
 import numpy as np
 import scipy.sparse as scis
 from joblib import Parallel, delayed
-from pyspa import SPAReader
+
+# from pyspa import SPAReader
 from tqdm import tqdm
 
 # from unipy import *
@@ -14,13 +16,13 @@ from tqdm import tqdm
 
 class DFC:
     def __init__(
-        self, reader, selection, svt, overlap, mixed, save_path: str = ""
+        self, reader, selection, svt, overlap, normalizer, save_path: str = ""
     ):
         self.reader = reader
         self.selection = selection
-        self._svt = svt
+        self.svt = svt
         self.overlap = overlap
-        self.mixed = mixed
+        self.normalizer = normalizer
         self.A = []
         self.save_path = save_path
         self.Uc = None
@@ -45,7 +47,7 @@ class DFC:
         return None
 
     def factor(self, n_jobs: int = 10):
-        with self._tqdm_joblib(tqdm(desc="Factor", total=len(self.partition))):
+        with _tqdm_joblib(tqdm(desc="Factor", total=len(self.partition))):
             self.A = Parallel(n_jobs=n_jobs)(
                 delayed(self._svt)(self.selection[part[1]])
                 for part in self.partition.items()
@@ -111,23 +113,22 @@ class DFC:
             i += 1
         return C
 
-    def _read_in(self, path, selection):
+    def _read_in(self, selection):
         # instantiate the reader
-        reader = SPAReader(path)
-        f = reader[0]
-        iter_var = reader.framelist
-        out = np.zeros((reader.n_mz_bins, len(selection)), dtype=f.dtype)
+        f = self.reader[0]
+        iter_var = self.reader.framelist
+        out = np.zeros((self.reader.n_mz_bins, len(selection)), dtype=f.dtype)
         C_sp = scis.csr_matrix(
             1
             / (
-                self.mixed[iter_var[selection]]
-                / np.median(self.mixed[iter_var[selection]])
+                self.normalizer[iter_var[selection]]
+                / np.median(self.normalizer[iter_var[selection]])
             ),
             dtype="float32",
         )
 
         for k, i in enumerate(iter_var[selection]):
-            f = reader[i]._init_csc()
+            f = self.reader[i]._init_csc()
             out[f.indices, k] = f.data
 
         B = scis.csc_matrix(out, dtype="float32").multiply(
@@ -136,17 +137,25 @@ class DFC:
         return B
 
     def _svt(self, selection):
-        a = self._read_in(selection, self.mixed)  # Read In Data in A
-        inst = self.svt
-        inst.run(a)
-        obj = [
-            inst._b[0].todense(),
-            inst._b[1].todense(),
-            inst._b[2].todense(),
-            selection,
-        ]  # Export rank, U, S, Vt and that's it.
+        a = self.overlap[selection]
+        b = self._read_in(selection).T  # Read In Data in b
+        inst = self.svt(a, b)
+        inst.run(k_max=100)
+        # obj = [
+        #     inst._c[0].todense(),
+        #     inst._c[1].todense(),
+        #     inst._c[2].todense(),
+        #     selection,
+        # ]  # Export rank, U, S, Vt and that's it.
+        np.savez(
+            self.save_path + str(uuid.uuid4()) + ".npz",
+            u=inst._c[0].toarray(),
+            s=inst._c[1].toarray(),
+            vt=inst._c[2].toarray(),
+            selection=selection,
+        )
 
-        return obj
+        return None
 
     def _save_intermediate(self, data):
         np.savez(
@@ -161,22 +170,21 @@ class DFC:
     def combine_from_files(self) -> None:  # recombine from files in here!
         return None
 
-    # Got this from internet somewhere
-    @contextlib.contextmanager
-    def _tqdm_joblib(tqdm_object):
-        """Context manager to patch joblib to report into tqdm progress bar given as argument"""
 
-        class TqdmBatchCompletionCallback(
-            joblib.parallel.BatchCompletionCallBack
-        ):
-            def __call__(self, *args, **kwargs):
-                tqdm_object.update(n=self.batch_size)
-                return super().__call__(*args, **kwargs)
+# Got this from internet somewhere
+@contextlib.contextmanager
+def _tqdm_joblib(tqdm_object):
+    """Context manager to patch joblib to report into tqdm progress bar given as argument"""
 
-        old_batch_callback = joblib.parallel.BatchCompletionCallBack
-        joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
-        try:
-            yield tqdm_object
-        finally:
-            joblib.parallel.BatchCompletionCallBack = old_batch_callback
-            tqdm_object.close()
+    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+        def __call__(self, *args, **kwargs):
+            tqdm_object.update(n=self.batch_size)
+            return super().__call__(*args, **kwargs)
+
+    old_batch_callback = joblib.parallel.BatchCompletionCallBack
+    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+    try:
+        yield tqdm_object
+    finally:
+        joblib.parallel.BatchCompletionCallBack = old_batch_callback
+        tqdm_object.close()
