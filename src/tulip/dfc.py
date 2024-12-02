@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 # from tulip.svt import SVT
 
+# Load in e.g. dd3 = SVT2.SVT2(scis.dok_array(a), scis.csc_array(b), verbose=False, kwargs = {'method': 'arpack'},)
 
 class DFC:
     def __init__(

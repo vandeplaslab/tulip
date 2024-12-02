@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as scis
 from unipy import linalg, matmul, multiply
 
-class SVT:
+class SVT2:
     """
     Perform matrix completion using Singular Value Thresholding (SVT).
 
@@ -32,6 +32,7 @@ class SVT:
         a: scis.dok_array,
         b: scis.csc_array,
         verbose: bool = False,
+        **kwargs,
     ):
         """
         Initialize the SVT class with the given parameters.
@@ -46,6 +47,7 @@ class SVT:
         self.verbose = verbose
         self.m = self.a.shape[1]
         self.n = self.b.shape[1]
+        self.kwargs = kwargs
 
     @property
     def c(self) -> np.array:
@@ -112,27 +114,28 @@ class SVT:
         b_fro = scis.linalg.norm(self.b, "fro")
         # k0 = int(tau / delta / b_fro)
         Y = np.zeros(self.b.shape)
-        r = 0
         k = 0
         pinv_a = np.linalg.pinv(self.a.toarray())
-
+        self._sv = 10  # set sv
+        self._svp = 0
+        
         # Main SVT loop
         while k < k_max:
             # s = r + 1
             # Calculate SVD and perform soft thresholding
-            U, S, Vt = np.linalg.svd(pinv_a @ Y, full_matrices=False)
-            r = int(sum(S > tau))
-
+            self.kwargs.update({"sv": self._sv})
+            U, S, Vt = linalg.svd(pinv_a @ Y, self.kwargs)
+            self._svp = int(sum(S > tau))
             # Compute solution based on thresholded singular values
-            if r == 0:
+            if self._svp == 0:
                 # self.c = U @ Vt
-                self.c = (U, np.array([1]), Vt)
+                self.c = (U, np.array([0]), Vt)
             else:
-                self.c = (U[:, :r], (S[:r] - tau), Vt[:r, :])
+                self.c = (U[:, :self._svp], (S[:self._svp] - tau), Vt[:self._svp, :])
                 # self.c = (U[:, :r] * (S[:r] - tau)) @ Vt[:r, :]
-
+            self._update_sv() # update svps and svs
             # Check stopping criterion
-            crit = np.linalg.norm((self.b - self.a @ self.c), "fro") / b_fro
+            crit = linalg.norm((self.b - self.a @ self.c), "fro") / b_fro
             if crit < 1e-4:
                 if self.verbose:
                     print(
@@ -140,7 +143,7 @@ class SVT:
                     )
                 break
             elif self.verbose:
-                print(f"Iteration {k} - Error = {crit:.6f} - Rank = {r}")
+                print(f"Iteration {k} - Error = {crit:.6f} - Rank = {self._svp}")
 
             # Update Y
             Y += delta * (self.b - self.a @ self.c)
@@ -152,3 +155,11 @@ class SVT:
             print(
                 f"Maximum iterations ({k_max}) reached - Final error = {crit:.6f}"
             )
+            
+    def _update_sv(self) -> None:
+        """Update (predict) the number of singular values to be calculated by svd."""
+        n = min(self.m, self.n)
+        if self._svp < self._sv:
+            self._sv = int(min(self._svp + 1, n))
+        else:
+            self._sv = int(min(self._svp + 10, n))
