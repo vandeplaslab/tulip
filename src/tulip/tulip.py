@@ -108,7 +108,9 @@ class TULIP:
     ) -> None:
         for attempt in range(restart_attempts):
             # Initialize factors with non-negative random values
+            np.random.seed(42)
             self.h = np.random.rand(self.m, rank)
+            np.random.seed(42)
             self.w = np.random.rand(rank, self.n)
 
             # Initialize Adam moments

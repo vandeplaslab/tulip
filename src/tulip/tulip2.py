@@ -2,7 +2,7 @@
 
 import numpy as np
 import scipy.sparse as scis
-
+from numba import njit, prange
 
 class TULIP2:
     def __init__(self, a, b, verbose=False):
@@ -106,31 +106,43 @@ class TULIP2:
     ) -> None:
         for attempt in range(restart_attempts):
             # Initialize factors with non-negative random values
-            self.h = np.random.rand(self.m, rank)
-            self.w = np.random.rand(rank, self.n)
+            np.random.seed(42)
+            self.h = np.random.rand(self.m, rank).astype(np.float32)
+            np.random.seed(42)
+            self.w = np.random.rand(rank, self.n).astype(np.float32)
 
             # Initialize Adam moments
             m_h = np.zeros_like(self.h)
             v_h = np.zeros_like(self.h)
             m_w = np.zeros_like(self.w)
             v_w = np.zeros_like(self.w)
-
+            
+            self.error = scis.csc_array(
+                (np.zeros_like(self.b.data), self.b.indices, self.b.indptr), shape=self.b.shape
+            )
             l_prev = self.h.copy()
             r_prev = self.w.copy()
+    
+            error_indices = self.error.indices
+            error_indptr = self.error.indptr
+            error_data = self.error.data.copy()  # Make a copy to modify
+            b_data = self.b.data
 
             for iteration in range(max_iter):
                 # Compute reconstruction error
-                error = self.sparse_error_calculation(self.h, self.w)
+                #self.sparse_error_calculation(self.h, self.w)
+                error_data = sparse_error_calculation(self.a.toarray(), self.h, self.w, error_indices, error_indptr, error_data, self.error.shape, b_data)
+                self.error.data = error_data
                 
                 # Update L (left factor)
-                grad_l = (self.a.T @ error @ self.w.T) + self.h
+                grad_l = (self.a.T @ self.error @ self.w.T) + self.h
                 self.h, m_h, v_h = self._adam_update(
                     self.h, grad_l, m_h, v_h, iteration + 1
                 )
                 self.h = np.maximum(self.h, np.finfo("float32").eps)
 
                 # Update R (right factor)
-                grad_r = ((self.a @ self.h).T @ error) + self.w
+                grad_r = ((self.a @ self.h).T @ self.error) + self.w
                 self.w, m_w, v_w = self._adam_update(
                     self.w, grad_r, m_w, v_w, iteration + 1
                 )
@@ -142,12 +154,7 @@ class TULIP2:
 
                 # Compute current loss
                 current_loss = (
-                    np.linalg.norm(error.data, 2)
-                    / np.linalg.norm(self.b.data, 2)
-                    * 100
-                )
-                test_loss = (
-                    np.linalg.norm(error2.data, 2)
+                    np.linalg.norm(self.error.data, 2)
                     / np.linalg.norm(self.b.data, 2)
                     * 100
                 )
@@ -174,7 +181,6 @@ class TULIP2:
                     print(
                         f"Attempt {attempt+1}, Iteration {iteration + 1}: "
                         f"Loss = {current_loss:.6f}, "
-                        f"Loss = {test_loss:.6f}, "
                         f"L diff = {l_diff:.6f}, R diff = {r_diff:.6f}"
                     )
 
@@ -192,52 +198,48 @@ class TULIP2:
         if self.verbose:
             print(f"Final Loss: {self.best_loss}")
             
+#     @njit
+#     def sparse_error_calculation(self, W, H):
+#         """
+#         Compute a partial matrix product with sparse result 
+#         constrained by non-zero pattern of input sparse matrix B and subtract its values from it
 
-    def sparse_error_calculation(self, W, H):
-        """
-        Compute a partial matrix product with sparse result 
-        constrained by non-zero pattern of input sparse matrix B and subtract its values from it
+#         Parameters:
+#         -----------
+#         W : numpy array or sparse matrix
+#         H : numpy array or sparse matrix
+#         """
+#         # Compute partial intermediate product
+#         intermediate = self.a @ W
 
-        Parameters:
-        -----------
-        A : numpy array or sparse matrix
-        W : numpy array or sparse matrix
-        H : numpy array or sparse matrix
-        B : scipy sparse CSC matrix (pattern matrix)
-
-        Returns:
-        --------
-        C : scipy.sparse.csc_matrix with values only where B has non-zero entries
-        """
-        # Get row and column indices from B
-        B_rows, B_cols = self.b.nonzero()
-
-        # Compute partial intermediate product
-        intermediate = self.a @ W
-
-#         # Extract the partial result for B's non-zero indices
-#         values = intermediate[B_rows, :] @ H[:, B_cols]
-       
-#         # Create a sparse selector matrix
-#         selector = scis.csr_matrix(
-#             (np.ones_like(B_rows), (np.arange(len(B_rows)), B_cols)), 
-#             shape=(len(B_rows), H.shape[1])
-#         )
-
-#         # Compute values with minimal memory overhead
-#         values = ((intermediate[B_rows, :] @ (H * selector.T)).diagonal()).copy()
-        values = np.zeros(len(B_rows), dtype=float)
-
-        for i, (row, col) in enumerate(zip(B_rows, B_cols)):
-            values[i] = np.dot(intermediate[row, :], H[:, col])
+#         # Subtract corresponding values from B
+#         for i in range(self.error.shape[1]):
+#             col = i
+#             row = self.error.indices[self.error.indptr[i] : self.error.indptr[i + 1]]
+#             self.error.data[self.error.indptr[i] : self.error.indptr[i + 1]] = (
+#                 intermediate[row, :] @ H[:, col]
+#             )
         
-        # Subtract corresponding values from B
-        values -= self.b.data
-        
-        # Create sparse CSC matrix
-        C = scis.csc_matrix(
-            (values, (B_rows, B_cols)), 
-            shape=self.b.shape
+#         self.error.data -= self.b.data
+
+#         return None
+
+@njit(parallel=True, fastmath=True)
+def sparse_error_calculation(a, W, H, error_indices, error_indptr, error_data, error_shape, b_data):
+    # Rewrite the method using Numba-compatible constructs
+    intermediate = a @ W
+
+    # Use prange instead of range for potential parallelization
+    for i in prange(error_shape[1]):
+        col = i
+        row_start = error_indptr[i]
+        row_end = error_indptr[i + 1]
+        rows = error_indices[row_start:row_end]
+
+        error_data[row_start:row_end] = (
+            intermediate[rows, :] @ np.ascontiguousarray(H[:, col])
         )
+        
+    error_data -= b_data
 
-        return C
+    return error_data
