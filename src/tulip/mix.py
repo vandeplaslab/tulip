@@ -194,10 +194,8 @@ class MIX:
         )
         # Assign classes based on spatial view
         a[
-            np.linspace(
-                0, np.prod(self._spatial.size) - 1, np.prod(self._spatial.size)
-            ),
-            self._spatial.view.flatten() - 1,
+            np.arange(np.prod(self._spatial.size), dtype=np.int32),
+            self._spatial.view.flatten(),
         ] = 1
         # Combine cell and nar links and reshape to spatial dimensions
         b = (

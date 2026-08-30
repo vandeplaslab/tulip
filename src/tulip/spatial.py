@@ -146,10 +146,23 @@ class SPATIAL:
         and refactored_cell_ids.
         """
         crop = self._read_tiff(tiff_file, page, x_min, y_min, x_size, y_size)
-        crop = self._cut_off(crop)
-        self._find_cell_ids(crop)
+        self.from_array(crop)
+
+    def from_array(self, view: np.ndarray) -> None:
+        """Load a labelled spatial view from an in-memory array.
+
+        This is useful for synthetic examples and for data that has already been
+        read from a non-TIFF source.  Values in ``nar_ids`` are treated as
+        non-annotated regions; all other labels are treated as cell IDs.
+        """
+        if view.ndim != 2:
+            raise ValueError("view must be a two-dimensional labelled array")
+
+        view = np.asarray(view, dtype=np.int32).copy()
+        view = self._cut_off(view)
+        self._find_cell_ids(view)
         self._define_refactor_ids(0, self.cell_ids.size)
-        self.view = self._refactor_ids(crop)
+        self.view = self._refactor_ids(view)
         self._empty_check()
 
     def _empty_check(self) -> None:

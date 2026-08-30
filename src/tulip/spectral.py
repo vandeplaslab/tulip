@@ -2,9 +2,6 @@ from typing import Union
 
 import numpy as np
 import scipy.sparse as ss
-from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer
-from pyclustering.cluster.kmeans import kmeans
-from pyclustering.utils.metric import distance_metric, type_metric
 from sklearn.cluster import KMeans
 
 
@@ -274,6 +271,15 @@ class SPECTRAL:
             - Array of cluster centers (representative spectra)
             - Array of cluster probabilities
         """
+        # ``pyclustering`` is only needed for the optional Manhattan variant.
+        # Keeping this import local lets the default Euclidean workflow work
+        # when users have installed only the core dependencies.
+        from pyclustering.cluster.center_initializer import (
+            kmeans_plusplus_initializer,
+        )
+        from pyclustering.cluster.kmeans import kmeans
+        from pyclustering.utils.metric import distance_metric, type_metric
+
         initial_centers = kmeans_plusplus_initializer(
             spectra, n_clus
         ).initialize()
